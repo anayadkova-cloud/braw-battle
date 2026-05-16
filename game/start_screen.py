@@ -105,6 +105,12 @@ class StartScreen(QMainWindow):
                                         background-color: #1b5e20;
                                     }
                                     """)
+        
+        play_button.clicked.connect(self.open_menu)
+        braw_button.clicked.connect(lambda: print('BRAW – скоро!'))
+        shop_button.clicked.connect(lambda: print('SHOP – скоро!'))
+        settings_button.clicked.connect(self.open_settings)
+    
         # Layout
         layout = QVBoxLayout(central)
         layout.setSpacing(10)
@@ -117,6 +123,12 @@ class StartScreen(QMainWindow):
         layout.addWidget(settings_button, alignment=Qt.AlignCenter)
         
 
+
+    def open_settings(self):
+        from settings import Settings
+        self.settings_win = Settings()
+        self.settings_win.show()
+        window.close()
 
     def open_menu(self):
         from game_menu import GameMenu
