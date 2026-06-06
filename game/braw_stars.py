@@ -11,6 +11,8 @@ def start_game(mode='training'):
         clock  = pygame.time.Clock()
     
         all_sprites = pygame.sprite.Group()
+        bullets = pygame.sprite.Group()
+        enemies = pygame.sprite.Group()
         player = Player(400, 300)
         all_sprites.add(player)
     
@@ -20,6 +22,12 @@ def start_game(mode='training'):
                 if e.type == pygame.QUIT: running = False
                 if e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_ESCAPE: running = False
+
+            if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+            mx, my = pygame.mouse.get_pos()
+            b = Bullet(player.rect.centerx, player.rect.centery, mx, my)
+            bullets.add(b)
+            all_sprites.add(b)
     
             all_sprites.update()
             window.fill((15, 25, 50))
@@ -27,20 +35,18 @@ def start_game(mode='training'):
             pygame.display.update()
             clock.tick(60)
 
+            hits = pygame.sprite.groupcollide(enemies, bullets, True, True)
+
+
 
 
 bullets = pygame.sprite.Group()
     
     # В event loop:
-if e.type == pygame.MOUSEBUTTONDOWN:
-    if e.button == 1:   # ляв клик
-        mx, my = pygame.mouse.get_pos()
-        b = Bullet(player.rect.centerx, player.rect.centery, mx, my)
-        bullets.add(b)
-        all_sprites.add(b)
 
-SPAWN_EVENT = pygame.USEREVENT + 1
-pygame.time.set_timer(SPAWN_EVENT, 2000)   # spawn на 2 сек
+
+
+  # spawn на 2 сек
     
 enemies = pygame.sprite.Group()
     
@@ -97,6 +103,9 @@ class Button:
             clock = pygame.time.Clock()
         
             BG_COLOR = (15, 25, 50)   # тъмносин фон
+
+            SPAWN_EVENT = pygame.USEREVENT + 1
+            pygame.time.set_timer(SPAWN_EVENT, 2000) 
         
             running = True
             while running:

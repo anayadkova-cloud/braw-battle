@@ -78,7 +78,7 @@ class Settings(QMainWindow):
             layout.addWidget(btn, alignment=Qt.AlignCenter)
 
         
-            def go_back(self):
+    def go_back(self):
                 from start_screen import StartScreen
                 self.start = StartScreen()
                 self.start.show()
