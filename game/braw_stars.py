@@ -15,6 +15,21 @@ def start_game(mode='training'):
         enemies = pygame.sprite.Group()
         player = Player(400, 300)
         all_sprites.add(player)
+
+        def show_game_over(window, font, score):
+        big_font = pygame.font.Font(None, 80)
+        window.fill((20, 0, 0))
+    
+        go_text = big_font.render('GAME OVER', True, (255, 50, 50))
+        sc_text = font.render(f'Финален резултат: {score}', True, (255,255,255))
+        hint    = font.render('Затваряне след 3 секунди...', True, (180,180,180))
+    
+        window.blit(go_text, go_text.get_rect(center=(400, 220)))
+        window.blit(sc_text, sc_text.get_rect(center=(400, 320)))
+        window.blit(hint,    hint.get_rect(center=(400, 400)))
+        pygame.display.update()
+        pygame.time.wait(3000)
+
     
         running = True
         while running:
@@ -22,6 +37,9 @@ def start_game(mode='training'):
                 if e.type == pygame.QUIT: running = False
                 if e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_ESCAPE: running = False
+            
+             show_game_over(window, font, score)
+
 
             if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
             mx, my = pygame.mouse.get_pos()
@@ -32,6 +50,20 @@ def start_game(mode='training'):
             all_sprites.update()
             window.fill((15, 25, 50))
             all_sprites.draw(window)
+            MAX_BAR_W = 200
+            BAR_H     = 22
+            
+            # В game loop след draw:
+            hp_ratio = player.hp / player.max_hp
+            
+            # Сива основа
+            pygame.draw.rect(window, (80, 80, 80), (10, 45, MAX_BAR_W, BAR_H))
+            # Зелена запълнена лента
+            pygame.draw.rect(window, (0, 200, 80), (10, 45, int(hp_ratio * MAX_BAR_W), BAR_H))
+            # Текст
+            hp_text = font.render(f'HP: {player.hp}/{player.max_hp}', True, (255,255,255))
+            window.blit(hp_text, (220, 45))
+
             pygame.display.update()
             clock.tick(60)
 
@@ -41,12 +73,20 @@ def start_game(mode='training'):
 
 
 bullets = pygame.sprite.Group()
+
+font  = pygame.font.Font(None, 36)
+score = 0
     
-    # В event loop:
+    # В hits loop:
+for enemy in hit_enemies:
+    enemy.take_damage(20)
+    if not enemy.is_alive():
+        score += 10
+    
+    # В game loop след draw:
+    score_text = font.render(f'Score: {score}', True, (255, 255, 255))
+    window.blit(score_text, (10, 10))
 
-
-
-  # spawn на 2 сек
     
 enemies = pygame.sprite.Group()
     
