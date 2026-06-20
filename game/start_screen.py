@@ -1,5 +1,6 @@
-import sys
+import os
 from PyQt5.QtCore import Qt
+import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from shop import Shop
@@ -43,6 +44,10 @@ class StartScreen(QMainWindow):
         central = QWidget(self)
         central.setObjectName("Widget")
         self.setCentralWidget(central)
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        bg_path  = os.path.join(base_dir, 'start_screen.png').replace('\\', '/')
+
 
         # Фоново изображение
         self.setStyleSheet("""

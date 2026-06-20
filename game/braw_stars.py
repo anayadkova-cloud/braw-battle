@@ -12,13 +12,16 @@ FPS = 60
 
 # Настройки за различните режими на игра
 MODE_SETTINGS = {
-    "training": {"round_time": 60, "speed": 2, "spawn_ms": 2000},
-    "normal": {"round_time": 90, "speed": 4, "spawn_ms": 1500},
+    "training": {"round_time": None, "speed": 1, "spawn_ms": 3000},
+    "brawl":    {"round_time": 60,   "speed": 3, "spawn_ms": 1500},
+    "solo":     {"round_time": 90,   "speed": 2, "spawn_ms": 2000},
+    "duo":      {"round_time": 90,   "speed": 2, "spawn_ms": 2000},
 }
+
 
 SPAWN_EVENT = pygame.USEREVENT + 1
 SHOOT_COOLDOWN = 300  # ms между изстрелите
-DAMAGE_CD = 1000  # ms кооडाउन за демидж върху играча
+DAMAGE_CD = 1000  # ms кулдаун за демидж върху играча
 
 
 # --- ПОМОЩНИ КЛАСОВЕ ---
@@ -81,12 +84,18 @@ def start_game(mode="training"):
     font = pygame.font.Font(None, 36)
     big_font = pygame.font.Font(None, 72)
 
-    # Звуци
     sounds_dir = os.path.join(os.path.dirname(__file__), "sounds")
-    shoot_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "shoot.wav"))
-    hit_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "hit.wav"))
-    shoot_sound.set_volume(0.4)
-    hit_sound.set_volume(0.6)
+    try:
+        shoot_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "shoot.wav"))
+        hit_sound = pygame.mixer.Sound(os.path.join(sounds_dir, "hit.wav"))
+        shoot_sound.set_volume(0.4)
+        hit_sound.set_volume(0.6)
+    except FileNotFoundError:
+        shoot_sound = hit_sound = None
+ 
+    # При изстрел/попадение, преди .play():
+    if shoot_sound:
+        shoot_sound.play()
 
     # Зареждане на конфигурация за режима
     cfg = MODE_SETTINGS.get(mode, MODE_SETTINGS["training"])
@@ -129,9 +138,10 @@ def start_game(mode="training"):
             if not paused:
                 # Спаун на врагове
                 if e.type == SPAWN_EVENT:
-                    enemy = Enemy(player.rect.centerx, player.rect.centery)
+                    enemy = Enemy(player.rect.centerx, player.rect.centery, speed=ENEMY_SPEED)
                     enemies.add(enemy)
                     all_sprites.add(enemy)
+
 
                 # Стрелба с мишката (с cooldown)
                 if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:

@@ -1,9 +1,9 @@
 import pygame, math, random
     
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, player_x, player_y):
+    def __init__(self, player_x, player_y, speed=2):
         super().__init__()
-        self.speed = 2
+        self.speed = speed
         self.hp    = 50
     
         self.image = pygame.Surface((45, 45))
