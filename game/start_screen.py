@@ -93,13 +93,13 @@ class StartScreen(QMainWindow):
         from settings import Settings
         self.settings_win = Settings()
         self.settings_win.show()
-        self.close()
+        #self.close()
 
     def open_menu(self):
         from game_menu import GameMenu
         self.menu = GameMenu()
         self.menu.show()
-        self.close()
+        #self.close()
 
 
 if __name__ == "__main__":

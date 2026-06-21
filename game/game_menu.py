@@ -1,7 +1,9 @@
 import sys
+import os
 import threading
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt, QSize  
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QSpacerItem, QSizePolicy
 
 from braw_stars import start_game
 
@@ -13,24 +15,7 @@ class MenuButton(QPushButton):
         if not pressed_color:
             pressed_color = hover_color
 
-        self.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {base_color};
-                color: white;
-                border: none;
-                border-radius: 18px;
-                font-size: 26px;
-                font-weight: bold;
-                min-width: 320px;
-                min-height: 75px;
-            }}
-            QPushButton:hover {{
-                background-color: {hover_color};
-            }}
-            QPushButton:pressed {{
-                background-color: {pressed_color};
-            }}
-        """)
+        
 
 
 # --- МЕНЮ ЗА ИГРАТА ---
@@ -44,32 +29,68 @@ class GameMenu(QMainWindow):
         central.setObjectName('Widget')
         self.setCentralWidget(central)
 
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        bg_path  = os.path.join(base_dir, 'players.png').replace('\\', '/')
+
+        # Фоново изображение
+        self.setStyleSheet(f"""
+            QWidget#Widget {{
+                background-image: url('{bg_path}');
+                background-repeat: no-repeat;
+                background-position: center;
+                background-size: cover;
+            }}
+        """)
+
         # Бутоните ще ползват тези цветове (същите като в Settings)
-        colors = {
-            'training': ('#2da8ff', '#1b8fe6'),
-            'brawl':    ('#e53935', '#d32f2f'),
-            'solo':     ('#9c27b0', '#8e24aa'),
-            'duo':      ('#43a047', '#388e3c'),
+        mode_images = {
+            #"training": "training_btn.png",
+            "solo": "solo.png",
+            #"duo": "duo_btn.png",
         }
 
-        # Настройка на лейаута
         layout = QVBoxLayout(central)
-        layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(15)
-        layout.setContentsMargins(0, 20, 0, 20)
-
+        layout.setContentsMargins(100, 300, 40, 40)
         # Динамично създаване на бутоните за различните режими
-        for label, mode in [('TRAINING', 'training'), ('BRAWL', 'brawl'),
-                            ('SOLO', 'solo'), ('DUO', 'duo')]:
-            bg, hover = colors[mode]
-            btn = MenuButton(label, bg, hover)
+        for mode, img_name in mode_images.items():
+        # Правим точен път до картинката
+            img_path = os.path.join(base_dir, img_name).replace("\\", "/")
+
+            btn = QPushButton()  # Създаваме празен бутон
+            btn.setIcon(QIcon(img_path))  # Слагаме картинката вътре
+            btn.setIconSize(QSize(200, 200))  # Задаваме големина (ширина, височина)
+
+            # Махаме рамките и сивия фон на бутона, за да се вижда само картинката
+            btn.setStyleSheet("""
+                QPushButton {
+                    border: none;
+                    background: transparent
+                }
+                QPushButton:hover {
+                    opacity: 0.85;
+                }
+            """)
+
             btn.clicked.connect(lambda _, m=mode: self.start_mode(m))
             layout.addWidget(btn, alignment=Qt.AlignCenter)
 
+            row_layout = QHBoxLayout()
+            row_layout.addWidget(btn)
+            # Добавяме пружина (Spacer) отдясно, която избутва бутона наляво
+            row_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+            
+            layout.addLayout(row_layout)
+
+        layout.addStretch(1)
+
         # Бутон за връщане назад
         back_btn = MenuButton('← НАЗАД', '#757575', '#616161', '#424242')
+        back_btn.setFixedSize(140, 70) 
         back_btn.clicked.connect(self.go_back)
-        layout.addWidget(back_btn, alignment=Qt.AlignCenter)
+        
+        # Центрираме го долу в ниското
+        layout.addWidget(back_btn, alignment=Qt.AlignRight) 
+
 
     # --- ЛОГИКА ---
     def start_mode(self, mode):

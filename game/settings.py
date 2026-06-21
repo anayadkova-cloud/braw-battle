@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
@@ -45,14 +46,17 @@ class Settings(QMainWindow):
         central.setObjectName("Widget")
         self.setCentralWidget(central)
 
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        bg_path  = os.path.join(base_dir, 'players.png').replace('\\', '/')
+
         # Фоново изображение
-        self.setStyleSheet("""
-            QWidget#Widget {
-                background-image: url(/home/Downloads/braw_stars/game/settings.png);
+        self.setStyleSheet(f"""
+            QWidget#Widget {{
+                background-image: url('{bg_path}');
                 background-repeat: no-repeat;
                 background-position: center;
                 background-size: cover;
-            } 
+            }}
         """)
 
         # --- СЪЗДАВАНЕ НА ЛЕЙАУТА ПЪРВО ---
@@ -65,21 +69,6 @@ class Settings(QMainWindow):
         sound_button = MenuButton("SOUND: ON/OFF", "#43a047", "#388e3c", "#1b5e20")
         layout.addWidget(sound_button, alignment=Qt.AlignCenter)
 
-        # Цветове за различните режими (ако са необходими тук)
-        colors = {
-            'training': ('#2da8ff', '#1b8fe6'),
-            'brawl':    ('#e53935', '#d32f2f'),
-            'solo':     ('#9c27b0', '#8e24aa'),
-            'duo':      ('#43a047', '#388e3c'),
-        }
-    
-        # Генериране на бутоните за режими
-        for label, mode in [('TRAINING', 'training'), ('BRAWL', 'brawl'),
-                            ('SOLO', 'solo'), ('DUO', 'duo')]:
-            bg, hover = colors[mode]
-            btn = MenuButton(label, bg, hover)
-            btn.clicked.connect(lambda _, m=mode: self.start_mode(m))
-            layout.addWidget(btn, alignment=Qt.AlignCenter)
 
         # Бутон за връщане назад
         back_button = MenuButton('← НАЗАД', '#757575', '#616161', '#424242')
