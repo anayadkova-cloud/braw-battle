@@ -1,15 +1,27 @@
-import pygame, math, random
+import pygame, math, random, os
     
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, player_x, player_y, speed=2):
         super().__init__()
         self.speed = speed
         self.hp    = 50
+        self.width = 45
+        self.height = 45
     
-        self.image = pygame.Surface((45, 45))
-        self.image.fill((229, 57, 53))   # ЧЕРВЕН
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        img_path = os.path.join(base_dir, 'enemy.png')
+        
+        if os.path.exists(img_path):
+            try:
+                self.image = pygame.image.load(img_path).convert_alpha()
+                self.image = pygame.transform.scale(self.image, (self.width, self.height))
+            except:
+                self.image = pygame.Surface((self.width, self.height))
+                self.image.fill((229, 57, 53))  # ЧЕРВЕН
+        else:
+            self.image = pygame.Surface((self.width, self.height))
+            self.image.fill((229, 57, 53))  # ЧЕРВЕН
     
-        # Spawn на случаен ръб
         side = random.choice(['top','bottom','left','right'])
         if side == 'top':    x, y = random.randint(0,800),  0
         elif side == 'bottom': x, y = random.randint(0,800), 600
@@ -38,4 +50,5 @@ class Enemy(pygame.sprite.Sprite):
         if self.hp <= 0:
             self.kill()
 
-
+    def is_alive(self):
+        return self.hp > 0

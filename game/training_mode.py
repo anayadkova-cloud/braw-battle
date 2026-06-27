@@ -1,12 +1,10 @@
 import os
-import sys
 import pygame
 import random
 import math
 
 WIDTH, HEIGHT = 800, 600
 FPS = 60
-
 SPAWN_EVENT = pygame.USEREVENT + 1
 SHOOT_COOLDOWN = 300
 DAMAGE_CD = 1000
@@ -32,7 +30,7 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, px, py, speed=2):
+    def __init__(self, px, py, speed=1):
         super().__init__()
         self.speed = speed
         self.hp = 50
@@ -61,10 +59,9 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y += dy / dist * self.speed
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y, pid=1):
+    def __init__(self, x, y):
         super().__init__()
         self.speed = 5
-        self.pid = pid
         
         base_dir = os.path.dirname(os.path.abspath(__file__))
         player_img = os.path.join(base_dir, 'player1.png')
@@ -73,14 +70,12 @@ class Player(pygame.sprite.Sprite):
             try:
                 self.image = pygame.image.load(player_img)
                 self.image = pygame.transform.scale(self.image, (50, 50))
-                if pid == 2:
-                    self.image = pygame.transform.flip(self.image, True, False)
             except:
                 self.image = pygame.Surface((50, 50))
-                self.image.fill((42, 168, 255) if pid == 1 else (255, 168, 42))
+                self.image.fill((42, 168, 255))
         else:
             self.image = pygame.Surface((50, 50))
-            self.image.fill((42, 168, 255) if pid == 1 else (255, 168, 42))
+            self.image.fill((42, 168, 255))
         
         self.rect = self.image.get_rect(center=(x, y))
         self.hp = 100
@@ -88,60 +83,35 @@ class Player(pygame.sprite.Sprite):
     
     def update(self):
         keys = pygame.key.get_pressed()
-        if self.pid == 1:
-            if keys[pygame.K_w] or keys[pygame.K_UP]:
-                self.rect.y = max(0, self.rect.y - self.speed)
-            if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-                self.rect.y = min(HEIGHT - 50, self.rect.y + self.speed)
-            if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-                self.rect.x = max(0, self.rect.x - self.speed)
-            if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-                self.rect.x = min(WIDTH - 50, self.rect.x + self.speed)
-        else:
-            if keys[pygame.K_i]:
-                self.rect.y = max(0, self.rect.y - self.speed)
-            if keys[pygame.K_k]:
-                self.rect.y = min(HEIGHT - 50, self.rect.y + self.speed)
-            if keys[pygame.K_j]:
-                self.rect.x = max(0, self.rect.x - self.speed)
-            if keys[pygame.K_l]:
-                self.rect.x = min(WIDTH - 50, self.rect.x + self.speed)
+        if keys[pygame.K_w] or keys[pygame.K_UP]:
+            self.rect.y = max(0, self.rect.y - self.speed)
+        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+            self.rect.y = min(HEIGHT - 50, self.rect.y + self.speed)
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+            self.rect.x = max(0, self.rect.x - self.speed)
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+            self.rect.x = min(WIDTH - 50, self.rect.x + self.speed)
 
-def start_game(mode="training"):
+def start_training():
     pygame.init()
     pygame.display.init()
     
     window = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"Braw Battle - {mode.upper()}")
+    pygame.display.set_caption("Braw Battle - TRAINING")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
     big_font = pygame.font.Font(None, 72)
 
-    modes = {
-        "training": (None, 1, 2000),
-        "solo": (90, 2, 2000),
-        "duo": (120, 3, 1500),
-    }
-    
-    rtime, speed, spawn_ms = modes.get(mode, modes["training"])
-    pygame.time.set_timer(SPAWN_EVENT, spawn_ms)
+    pygame.time.set_timer(SPAWN_EVENT, 2000)
 
     all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
 
-    if mode == "duo":
-        p1 = Player(WIDTH // 3, HEIGHT // 2, 1)
-        p2 = Player(2 * WIDTH // 3, HEIGHT // 2, 2)
-        all_sprites.add(p1, p2)
-        players = [p1, p2]
-    else:
-        p = Player(WIDTH // 2, HEIGHT // 2, 1)
-        all_sprites.add(p)
-        players = [p]
+    player = Player(WIDTH // 2, HEIGHT // 2)
+    all_sprites.add(player)
 
     score = 0
-    start_time = pygame.time.get_ticks()
     last_shot = 0
     dmg_cd = 0
     running = True
@@ -158,15 +128,15 @@ def start_game(mode="training"):
                 if e.key == pygame.K_ESCAPE:
                     paused = not paused
             
-            if e.type == SPAWN_EVENT and not paused and mode != "duo":
-                enemy = Enemy(players[0].rect.centerx, players[0].rect.centery, speed)
+            if e.type == SPAWN_EVENT and not paused:
+                enemy = Enemy(player.rect.centerx, player.rect.centery, 1)
                 enemies.add(enemy)
                 all_sprites.add(enemy)
             
             if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and not paused:
                 if now - last_shot >= SHOOT_COOLDOWN:
                     mx, my = pygame.mouse.get_pos()
-                    bullet = Bullet(players[0].rect.centerx, players[0].rect.centery, mx, my)
+                    bullet = Bullet(player.rect.centerx, player.rect.centery, mx, my)
                     bullets.add(bullet)
                     all_sprites.add(bullet)
                     last_shot = now
@@ -174,59 +144,33 @@ def start_game(mode="training"):
         if not paused:
             all_sprites.update()
             
-            if mode != "duo":
-                for enemy in enemies:
-                    enemy.update(players[0].rect.centerx, players[0].rect.centery)
-                
-                hits = pygame.sprite.groupcollide(bullets, enemies, True, False)
-                for bullet, hit_list in hits.items():
-                    for enemy in hit_list:
-                        enemy.hp -= 20
-                        if enemy.hp <= 0:
-                            enemy.kill()
-                            score += 10
-                
-                collisions = pygame.sprite.spritecollide(players[0], enemies, False)
-                if collisions and now - dmg_cd > DAMAGE_CD:
-                    players[0].hp -= 10
-                    dmg_cd = now
-                    if players[0].hp <= 0:
-                        running = False
-            else:
-                collisions = pygame.sprite.spritecollide(players[1], bullets, True)
-                if collisions:
-                    for _ in collisions:
-                        players[1].hp -= 5
-                        score += 5
-                    if players[1].hp <= 0:
-                        running = False
-
-            elapsed = (pygame.time.get_ticks() - start_time) // 1000
-            if rtime and elapsed >= rtime:
-                running = False
+            for enemy in enemies:
+                enemy.update(player.rect.centerx, player.rect.centery)
+            
+            hits = pygame.sprite.groupcollide(bullets, enemies, True, False)
+            for bullet, hit_list in hits.items():
+                for enemy in hit_list:
+                    enemy.hp -= 20
+                    if enemy.hp <= 0:
+                        enemy.kill()
+                        score += 10
+            
+            collisions = pygame.sprite.spritecollide(player, enemies, False)
+            if collisions and now - dmg_cd > DAMAGE_CD:
+                player.hp -= 10
+                dmg_cd = now
+                if player.hp <= 0:
+                    running = False
 
         window.fill((15, 25, 50))
         all_sprites.draw(window)
 
-        if mode == "duo":
-            hp1 = max(0, int(players[0].hp / players[0].max_hp * 180))
-            hp2 = max(0, int(players[1].hp / players[1].max_hp * 180))
-            pygame.draw.rect(window, (100, 100, 100), (10, 10, 180, 20))
-            pygame.draw.rect(window, (0, 255, 0), (10, 10, hp1, 20))
-            pygame.draw.rect(window, (100, 100, 100), (WIDTH - 190, 10, 180, 20))
-            pygame.draw.rect(window, (0, 255, 0), (WIDTH - 190, 10, hp2, 20))
-        else:
-            hp = max(0, int(players[0].hp / players[0].max_hp * 180))
-            pygame.draw.rect(window, (100, 100, 100), (10, 10, 180, 20))
-            pygame.draw.rect(window, (0, 255, 0), (10, 10, hp, 20))
+        hp = max(0, int(player.hp / player.max_hp * 180))
+        pygame.draw.rect(window, (100, 100, 100), (10, 10, 180, 20))
+        pygame.draw.rect(window, (0, 255, 0), (10, 10, hp, 20))
 
         score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         window.blit(score_text, (10, 50))
-
-        if rtime:
-            time_left = max(0, rtime - elapsed)
-            time_text = font.render(f"Time: {time_left}s", True, (255, 255, 255))
-            window.blit(time_text, (WIDTH - 180, 50))
 
         if paused:
             pause_text = big_font.render("PAUSED", True, (255, 220, 0))
@@ -247,4 +191,4 @@ def start_game(mode="training"):
     pygame.quit()
 
 if __name__ == "__main__":
-    start_game("training")
+    start_training()

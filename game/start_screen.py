@@ -4,6 +4,8 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from shop import Shop
+from config import Config
+from sound_manager import SoundManager
 
 
 # --- ПРЕИЗПОЛЗВАЕМ КЛАС ЗА БУТОН ---
@@ -40,6 +42,10 @@ class StartScreen(QMainWindow):
         self.setWindowTitle("Braw Starts")
         self.setGeometry(400, 400, 800, 800)
 
+        # Инициализира глобалните системи
+        self.config = Config()
+        self.sound_manager = SoundManager()
+
         # Централен контейнер
         central = QWidget(self)
         central.setObjectName("Widget")
@@ -50,13 +56,13 @@ class StartScreen(QMainWindow):
 
 
         # Фоново изображение
-        self.setStyleSheet("""
-            QWidget#Widget {
-                background-image: url(/home/ana/Downloads/braw_stars/game/start_screen.png);
+        self.setStyleSheet(f"""
+            QWidget#Widget {{
+                background-image: url('{bg_path}');
                 background-repeat: no-repeat;
                 background-position: center;
                 background-size: cover;
-            } 
+            }} 
         """)
 
         # --- СЪЗДАВАНЕ НА БУТОНИТЕ С НОВИЯ КЛАС ---
@@ -93,13 +99,13 @@ class StartScreen(QMainWindow):
         from settings import Settings
         self.settings_win = Settings()
         self.settings_win.show()
-        #self.close()
+        self.close()
 
     def open_menu(self):
         from game_menu import GameMenu
         self.menu = GameMenu()
         self.menu.show()
-        #self.close()
+        self.close()
 
 
 if __name__ == "__main__":

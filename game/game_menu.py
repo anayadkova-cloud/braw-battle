@@ -1,24 +1,35 @@
 import sys
 import os
 import threading
-from PyQt5.QtCore import Qt, QSize  
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QSpacerItem, QSizePolicy
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel
 
-from braw_stars import start_game
-
-
-# --- ПРЕИЗПОЛЗВАЕМ КЛАС ЗА БУТОН ---
 class MenuButton(QPushButton):
     def __init__(self, text, base_color, hover_color, pressed_color=None):
         super().__init__(text)
         if not pressed_color:
             pressed_color = hover_color
 
-        
+        self.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {base_color};
+                color: white;
+                border: none;
+                border-radius: 18px;
+                font-size: 26px;
+                font-weight: bold;
+                min-width: 320px;
+                min-height: 75px;
+            }}
+            QPushButton:hover {{
+                background-color: {hover_color};
+            }}
+            QPushButton:pressed {{
+                background-color: {pressed_color};
+            }}
+        """)
 
-
-# --- МЕНЮ ЗА ИГРАТА ---
 class GameMenu(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -30,9 +41,8 @@ class GameMenu(QMainWindow):
         self.setCentralWidget(central)
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        bg_path  = os.path.join(base_dir, 'players.png').replace('\\', '/')
+        bg_path = os.path.join(base_dir, 'players.png').replace('\\', '/')
 
-        # Фоново изображение
         self.setStyleSheet(f"""
             QWidget#Widget {{
                 background-image: url('{bg_path}');
@@ -42,61 +52,90 @@ class GameMenu(QMainWindow):
             }}
         """)
 
-        # Бутоните ще ползват тези цветове (същите като в Settings)
         mode_images = {
-            #"training": "training_btn.png",
+            "training": "training.png",
             "solo": "solo.png",
-            #"duo": "duo_btn.png",
+            "duo": "duo.png",
+        }
+
+        mode_descriptions = {
+            "training": "TRAINING\nВремето: ∞\nСложност: Лека",
+            "solo": "SOLO\nВремето: 90s\nСложност: Средна",
+            "duo": "DUO\nВремето: 120s\nСложност: Висока",
         }
 
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(100, 300, 40, 40)
-        # Динамично създаване на бутоните за различните режими
+        layout.setContentsMargins(50, 250, 50, 50)
+        layout.setSpacing(20)
+        
+        modes_layout = QHBoxLayout()
+        modes_layout.setSpacing(20)
+        modes_layout.setAlignment(Qt.AlignCenter)
+        
         for mode, img_name in mode_images.items():
-        # Правим точен път до картинката
+            mode_vbox = QVBoxLayout()
+            mode_vbox.setSpacing(5)
+            
             img_path = os.path.join(base_dir, img_name).replace("\\", "/")
 
-            btn = QPushButton()  # Създаваме празен бутон
-            btn.setIcon(QIcon(img_path))  # Слагаме картинката вътре
-            btn.setIconSize(QSize(200, 200))  # Задаваме големина (ширина, височина)
+            btn = QPushButton()
+            if os.path.exists(img_path):
+                btn.setIcon(QIcon(img_path))
+            btn.setIconSize(QSize(150, 150))
+            btn.setFixedSize(180, 200)
 
-            # Махаме рамките и сивия фон на бутона, за да се вижда само картинката
             btn.setStyleSheet("""
                 QPushButton {
                     border: none;
-                    background: transparent
+                    background: transparent;
+                    padding: 5px;
                 }
                 QPushButton:hover {
                     opacity: 0.85;
                 }
+                QPushButton:pressed {
+                    opacity: 0.7;
+                }
             """)
 
             btn.clicked.connect(lambda _, m=mode: self.start_mode(m))
-            layout.addWidget(btn, alignment=Qt.AlignCenter)
-
-            row_layout = QHBoxLayout()
-            row_layout.addWidget(btn)
-            # Добавяме пружина (Spacer) отдясно, която избутва бутона наляво
-            row_layout.addSpacerItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+            mode_vbox.addWidget(btn, alignment=Qt.AlignCenter)
             
-            layout.addLayout(row_layout)
-
+            desc_label = QLabel(mode_descriptions[mode])
+            desc_label.setFont(QFont("Arial", 11, QFont.Bold))
+            desc_label.setStyleSheet("""
+                color: white;
+                background-color: rgba(0, 0, 0, 150);
+                padding: 8px;
+                border-radius: 5px;
+                text-align: center;
+            """)
+            desc_label.setAlignment(Qt.AlignCenter)
+            mode_vbox.addWidget(desc_label)
+            
+            modes_layout.addLayout(mode_vbox)
+        
+        layout.addLayout(modes_layout)
         layout.addStretch(1)
 
-        # Бутон за връщане назад
         back_btn = MenuButton('← НАЗАД', '#757575', '#616161', '#424242')
-        back_btn.setFixedSize(140, 70) 
+        back_btn.setFixedSize(140, 70)
         back_btn.clicked.connect(self.go_back)
-        
-        # Центрираме го долу в ниското
-        layout.addWidget(back_btn, alignment=Qt.AlignRight) 
+        layout.addWidget(back_btn, alignment=Qt.AlignCenter)
 
-
-    # --- ЛОГИКА ---
     def start_mode(self, mode):
         self.close()
-        # Стартиране на Pygame в отделен Thread, за да не замръзва PyQt
-        t = threading.Thread(target=start_game, args=(mode,), daemon=True)
+        
+        if mode == "training":
+            from training_mode import start_training
+            t = threading.Thread(target=start_training, daemon=True)
+        elif mode == "solo":
+            from solo_mode import start_solo
+            t = threading.Thread(target=start_solo, daemon=True)
+        elif mode == "duo":
+            from duo_mode import start_duo
+            t = threading.Thread(target=start_duo, daemon=True)
+        
         t.start()
 
     def go_back(self):
@@ -104,7 +143,6 @@ class GameMenu(QMainWindow):
         self.start = StartScreen()
         self.start.show()
         self.close()
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
