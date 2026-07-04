@@ -9,7 +9,6 @@ from config import Config
 from sound_manager import SoundManager
 
 
-# --- ПРЕИЗПОЛЗВАЕМ КЛАС ЗА БУТОН ---
 class MenuButton(QPushButton):
     def __init__(self, text, base_color, hover_color, pressed_color=None):
         super().__init__(text)

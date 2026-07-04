@@ -9,7 +9,7 @@ class Enemy(pygame.sprite.Sprite):
         self.height = 45
     
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        img_path = os.path.join(base_dir, 'enemy.png')
+        img_path = os.path.join(base_dir, 'enemy1.png')
         
         if os.path.exists(img_path):
             try:

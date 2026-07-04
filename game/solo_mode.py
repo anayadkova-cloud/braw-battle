@@ -9,48 +9,173 @@ SPAWN_EVENT = pygame.USEREVENT + 1
 SHOOT_COOLDOWN = 300
 DAMAGE_CD = 1000
 
+PLAYER_SIZE = (220, 220)
+ENEMY_SIZE = (90, 90)
+
+BG_COLOR = (173, 216, 230)     # бледо синьо
+UI_TEXT_COLOR = (20, 30, 40)
+
+EXIT_BTN_RECT = pygame.Rect(WIDTH - 130, 10, 120, 40)
+
+
+def load_animation_frames(base_dir, filename, frames, size=PLAYER_SIZE):
+    path = os.path.join(base_dir, filename)
+    frames_list = []
+
+    if os.path.exists(path):
+        try:
+            sheet = pygame.image.load(path)
+            try:
+                sheet = sheet.convert_alpha()
+            except pygame.error:
+                pass
+
+            sheet_w = sheet.get_width()
+            sheet_h = sheet.get_height()
+            frame_width = sheet_w // frames
+
+            for i in range(frames):
+                rect = pygame.Rect(i * frame_width, 0, frame_width, sheet_h)
+                frame = sheet.subsurface(rect).copy()
+                frame = pygame.transform.scale(frame, size)
+                frames_list.append(frame)
+        except Exception as e:
+            print(f"⚠️ Грешка при зареждане на {filename}: {e}")
+
+    return frames_list
+
+
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, sx, sy, tx, ty):
         super().__init__()
-        self.speed = 10
+        self.speed = 12
         self.image = pygame.Surface((12, 12), pygame.SRCALPHA)
-        pygame.draw.circle(self.image, (255, 230, 50), (6, 6), 6)
+        pygame.draw.circle(self.image, (255, 140, 0), (6, 6), 6)
         self.rect = self.image.get_rect(center=(sx, sy))
-        
+
         dx = tx - sx
         dy = ty - sy
         dist = math.hypot(dx, dy) or 1
         self.vx = dx / dist * self.speed
         self.vy = dy / dist * self.speed
-    
+
     def update(self):
         self.rect.x += self.vx
         self.rect.y += self.vy
         if self.rect.x < 0 or self.rect.x > WIDTH or self.rect.y < 0 or self.rect.y > HEIGHT:
             self.kill()
 
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.speed = 5
+        self.direction = 1
+        self.state = "idle"
+        self.current_frame = 0
+        self.frame_counter = 0
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        hero_dir = os.path.join(base_dir, "hero")
+
+        self.animations = {
+            "idle": {"frames": load_animation_frames(hero_dir, "idle.png", 9, PLAYER_SIZE), "speed": 6},
+            "walk": {"frames": load_animation_frames(hero_dir, "Walk.png", 7, PLAYER_SIZE), "speed": 5},
+        }
+
+        if self.animations["idle"]["frames"]:
+            self.image = self.animations["idle"]["frames"][0]
+        else:
+            player_img = os.path.join(base_dir, "player1.png")
+            if os.path.exists(player_img):
+                try:
+                    self.image = pygame.image.load(player_img)
+                    self.image = pygame.transform.scale(self.image, PLAYER_SIZE)
+                except Exception:
+                    self.image = pygame.Surface(PLAYER_SIZE)
+                    self.image.fill((42, 168, 255))
+            else:
+                self.image = pygame.Surface(PLAYER_SIZE)
+                self.image.fill((42, 168, 255))
+
+        self.rect = self.image.get_rect(center=(x, y))
+        self.hp = 100
+        self.max_hp = 100
+
+    def set_state(self, new_state):
+        if new_state != self.state and self.animations.get(new_state, {}).get("frames"):
+            self.state = new_state
+            self.current_frame = 0
+            self.frame_counter = 0
+
+    def animate(self):
+        anim = self.animations.get(self.state)
+        if not anim or not anim["frames"]:
+            return
+        self.frame_counter += 1
+        if self.frame_counter >= anim["speed"]:
+            self.frame_counter = 0
+            self.current_frame = (self.current_frame + 1) % len(anim["frames"])
+        frame = anim["frames"][self.current_frame]
+        if self.direction == -1:
+            frame = pygame.transform.flip(frame, True, False)
+        center = self.rect.center
+        self.image = frame
+        self.rect = self.image.get_rect(center=center)
+
+    def update(self, held_keys):
+        moving = False
+        if pygame.K_w in held_keys or pygame.K_UP in held_keys:
+            self.rect.y = max(0, self.rect.y - self.speed)
+            moving = True
+        if pygame.K_s in held_keys or pygame.K_DOWN in held_keys:
+            self.rect.y = min(HEIGHT - self.rect.height, self.rect.y + self.speed)
+            moving = True
+        if pygame.K_a in held_keys or pygame.K_LEFT in held_keys:
+            self.rect.x = max(0, self.rect.x - self.speed)
+            self.direction = -1
+            moving = True
+        if pygame.K_d in held_keys or pygame.K_RIGHT in held_keys:
+            self.rect.x = min(WIDTH - self.rect.width, self.rect.x + self.speed)
+            self.direction = 1
+            moving = True
+
+        self.set_state("walk" if moving else "idle")
+        self.animate()
+
+
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, px, py, speed=2):
         super().__init__()
         self.speed = speed
         self.hp = 50
-        
+        self.max_hp = 50
+        self.hit_flash = 0
+
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        enemy_img = os.path.join(base_dir, 'enemy.png')
-        
+        enemy_img = os.path.join(base_dir, "enemy1.png")
+
+        self.base_image = None
         if os.path.exists(enemy_img):
             try:
-                self.image = pygame.image.load(enemy_img)
-                self.image = pygame.transform.scale(self.image, (45, 45))
-            except:
-                self.image = pygame.Surface((45, 45))
-                self.image.fill((229, 57, 53))
-        else:
-            self.image = pygame.Surface((45, 45))
-            self.image.fill((229, 57, 53))
-        
-        self.rect = self.image.get_rect(center=(random.randint(50, WIDTH-50), random.randint(50, HEIGHT-50)))
-    
+                self.base_image = pygame.image.load(enemy_img).convert_alpha()
+                self.base_image = pygame.transform.scale(self.base_image, ENEMY_SIZE)
+            except Exception:
+                self.base_image = None
+
+        if self.base_image is None:
+            self.base_image = pygame.Surface(ENEMY_SIZE, pygame.SRCALPHA)
+            self.base_image.fill((229, 57, 53))
+
+        self.image = self.base_image
+        self.rect = self.image.get_rect(
+            center=(random.randint(50, WIDTH - 50), random.randint(50, HEIGHT - 50))
+        )
+
+    def take_damage(self, amount):
+        self.hp = max(0, self.hp - amount)
+        self.hit_flash = 6
+
     def update(self, px, py):
         dx = px - self.rect.centerx
         dy = py - self.rect.centery
@@ -58,148 +183,174 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x += dx / dist * self.speed
         self.rect.y += dy / dist * self.speed
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__()
-        self.speed = 5
-        
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        player_img = os.path.join(base_dir, 'player1.png')
-        
-        if os.path.exists(player_img):
-            try:
-                self.image = pygame.image.load(player_img)
-                self.image = pygame.transform.scale(self.image, (50, 50))
-            except:
-                self.image = pygame.Surface((50, 50))
-                self.image.fill((42, 168, 255))
+        if self.hit_flash > 0:
+            self.hit_flash -= 1
+            flash_img = self.base_image.copy()
+            red_overlay = pygame.Surface(self.base_image.get_size(), pygame.SRCALPHA)
+            red_overlay.fill((255, 0, 0, 90))
+            flash_img.blit(red_overlay, (0, 0))
+            self.image = flash_img
         else:
-            self.image = pygame.Surface((50, 50))
-            self.image.fill((42, 168, 255))
-        
-        self.rect = self.image.get_rect(center=(x, y))
-        self.hp = 100
-        self.max_hp = 100
-    
-    def update(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            self.rect.y = max(0, self.rect.y - self.speed)
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            self.rect.y = min(HEIGHT - 50, self.rect.y + self.speed)
-        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            self.rect.x = max(0, self.rect.x - self.speed)
-        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            self.rect.x = min(WIDTH - 50, self.rect.x + self.speed)
+            self.image = self.base_image
+
+
+def draw_crosshair(window, pos):
+    x, y = pos
+    color = (200, 20, 20)
+    pygame.draw.circle(window, color, (x, y), 14, 2)
+    pygame.draw.line(window, color, (x - 20, y), (x - 6, y), 2)
+    pygame.draw.line(window, color, (x + 6, y), (x + 20, y), 2)
+    pygame.draw.line(window, color, (x, y - 20), (x, y - 6), 2)
+    pygame.draw.line(window, color, (x, y + 6), (x, y + 20), 2)
+
+
+def draw_exit_button(window, font):
+    pygame.draw.rect(window, (200, 40, 40), EXIT_BTN_RECT, border_radius=8)
+    pygame.draw.rect(window, (120, 10, 10), EXIT_BTN_RECT, 2, border_radius=8)
+    text = font.render("ИЗХОД (ESC)", True, (255, 255, 255))
+    text_rect = text.get_rect(center=EXIT_BTN_RECT.center)
+    window.blit(text, text_rect)
+
 
 def start_solo():
+    try:
+        _run_solo()
+    except Exception:
+        import traceback
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        log_path = os.path.join(base_dir, "solo_crash_log.txt")
+        with open(log_path, "w", encoding="utf-8") as f:
+            traceback.print_exc(file=f)
+        traceback.print_exc()
+        try:
+            pygame.display.quit()
+            pygame.quit()
+        except Exception:
+            pass
+
+
+def _run_solo():
     pygame.init()
     pygame.display.init()
-    
+
     window = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Braw Battle - SOLO")
+    pygame.display.set_caption("Braw Battle - SOLO (90s, Enemy auto-pursues)")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
     big_font = pygame.font.Font(None, 72)
+    small_font = pygame.font.Font(None, 24)
+    exit_font = pygame.font.Font(None, 20)
 
     pygame.time.set_timer(SPAWN_EVENT, 2000)
 
-    all_sprites = pygame.sprite.Group()
     bullets = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
 
     player = Player(WIDTH // 2, HEIGHT // 2)
-    all_sprites.add(player)
+    enemies.add(Enemy(player.rect.centerx, player.rect.centery, speed=2))
+
+    held_keys = set()
 
     score = 0
     start_time = pygame.time.get_ticks()
     last_shot = 0
     dmg_cd = 0
     running = True
-    paused = False
     round_time = 90
 
     while running:
         now = pygame.time.get_ticks()
-        
+        mouse_pos = pygame.mouse.get_pos()
+
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 running = False
-            
-            if e.type == pygame.KEYDOWN:
-                if e.key == pygame.K_ESCAPE:
-                    paused = not paused
-            
-            if e.type == SPAWN_EVENT and not paused:
-                enemy = Enemy(player.rect.centerx, player.rect.centery, 2)
-                enemies.add(enemy)
-                all_sprites.add(enemy)
-            
-            if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1 and not paused:
-                if now - last_shot >= SHOOT_COOLDOWN:
-                    mx, my = pygame.mouse.get_pos()
-                    bullet = Bullet(player.rect.centerx, player.rect.centery, mx, my)
-                    bullets.add(bullet)
-                    all_sprites.add(bullet)
-                    last_shot = now
 
-        if not paused:
-            all_sprites.update()
-            
-            for enemy in enemies:
-                enemy.update(player.rect.centerx, player.rect.centery)
-            
-            hits = pygame.sprite.groupcollide(bullets, enemies, True, False)
-            for bullet, hit_list in hits.items():
-                for enemy in hit_list:
-                    enemy.hp -= 20
-                    if enemy.hp <= 0:
-                        enemy.kill()
-                        score += 10
-            
-            collisions = pygame.sprite.spritecollide(player, enemies, False)
-            if collisions and now - dmg_cd > DAMAGE_CD:
-                player.hp -= 10
-                dmg_cd = now
-                if player.hp <= 0:
+            if e.type == pygame.KEYDOWN:
+                held_keys.add(e.key)
+                if e.key == pygame.K_ESCAPE:
                     running = False
 
-            elapsed = (pygame.time.get_ticks() - start_time) // 1000
-            if elapsed >= round_time:
+                if e.key == pygame.K_SPACE:
+                    if now - last_shot >= SHOOT_COOLDOWN:
+                        mx, my = mouse_pos
+                        bullets.add(Bullet(player.rect.centerx, player.rect.centery, mx, my))
+                        last_shot = now
+                        player.direction = 1 if mx >= player.rect.centerx else -1
+
+            if e.type == pygame.KEYUP:
+                held_keys.discard(e.key)
+
+            if e.type == SPAWN_EVENT:
+                enemies.add(Enemy(player.rect.centerx, player.rect.centery, speed=2))
+
+            if e.type == pygame.MOUSEBUTTONDOWN and e.button == 1:
+                if EXIT_BTN_RECT.collidepoint(mouse_pos):
+                    running = False
+
+        player.update(held_keys)
+        for enemy in enemies:
+            enemy.update(player.rect.centerx, player.rect.centery)
+        bullets.update()
+
+        hits = pygame.sprite.groupcollide(bullets, enemies, True, False)
+        for bullet, hit_list in hits.items():
+            for enemy in hit_list:
+                enemy.take_damage(20)
+                if enemy.hp <= 0:
+                    enemy.kill()
+                    score += 10
+
+        collisions = pygame.sprite.spritecollide(player, enemies, False)
+        if collisions and now - dmg_cd > DAMAGE_CD:
+            player.hp -= 10
+            dmg_cd = now
+            if player.hp <= 0:
                 running = False
 
-        window.fill((15, 25, 50))
-        all_sprites.draw(window)
-
-        hp = max(0, int(player.hp / player.max_hp * 180))
-        pygame.draw.rect(window, (100, 100, 100), (10, 10, 180, 20))
-        pygame.draw.rect(window, (0, 255, 0), (10, 10, hp, 20))
-
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        window.blit(score_text, (10, 50))
-
         elapsed = (pygame.time.get_ticks() - start_time) // 1000
-        time_left = max(0, round_time - elapsed)
-        time_text = font.render(f"Time: {time_left}s", True, (255, 255, 255))
-        window.blit(time_text, (WIDTH - 180, 50))
+        if elapsed >= round_time:
+            running = False
 
-        if paused:
-            pause_text = big_font.render("PAUSED", True, (255, 220, 0))
-            window.blit(pause_text, pause_text.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
+        # --- РИСУВАНЕ ---
+        window.fill(BG_COLOR)
+        for enemy in enemies:
+            window.blit(enemy.image, enemy.rect)
+        window.blit(player.image, player.rect)
+        bullets.draw(window)
+        draw_crosshair(window, mouse_pos)
+
+        hp = max(0, int(player.hp / player.max_hp * 150))
+        pygame.draw.rect(window, (60, 60, 60), (10, 10, 150, 15))
+        pygame.draw.rect(window, (0, 200, 0), (10, 10, hp, 15))
+        window.blit(small_font.render(f"You: {int(player.hp)}", True, UI_TEXT_COLOR), (10, 30))
+
+        score_text = font.render(f"Score: {score}", True, UI_TEXT_COLOR)
+        window.blit(score_text, (10, 60))
+
+        time_left = max(0, round_time - elapsed)
+        time_text = font.render(f"Time: {time_left}s", True, UI_TEXT_COLOR)
+        window.blit(time_text, (WIDTH - 300, 60))
+
+        info_text = small_font.render("WASD move + SPACE shoot (aim with mouse)", True, (60, 70, 80))
+        window.blit(info_text, (10, HEIGHT - 30))
+
+        draw_exit_button(window, exit_font)
 
         pygame.display.flip()
         clock.tick(FPS)
 
-    window.fill((20, 0, 0))
-    go_text = big_font.render("GAME OVER", True, (255, 50, 50))
-    sc_text = font.render(f"Score: {score}", True, (255, 255, 255))
-    window.blit(go_text, go_text.get_rect(center=(WIDTH // 2, 220)))
+    window.fill(BG_COLOR)
+    go_text = big_font.render("GAME OVER", True, (200, 30, 30))
+    sc_text = font.render(f"Score: {score}", True, UI_TEXT_COLOR)
+    window.blit(go_text, go_text.get_rect(center=(WIDTH // 2, 250)))
     window.blit(sc_text, sc_text.get_rect(center=(WIDTH // 2, 320)))
     pygame.display.flip()
-    pygame.time.wait(3000)
-    
+    pygame.time.wait(2500)
+
     pygame.display.quit()
     pygame.quit()
+
 
 if __name__ == "__main__":
     start_solo()

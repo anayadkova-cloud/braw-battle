@@ -1,6 +1,5 @@
 import sys
 import os
-import threading
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QLabel
@@ -124,19 +123,23 @@ class GameMenu(QMainWindow):
         layout.addWidget(back_btn, alignment=Qt.AlignCenter)
 
     def start_mode(self, mode):
-        self.close()
-        
-        if mode == "training":
-            from training_mode import start_training
-            t = threading.Thread(target=start_training, daemon=True)
-        elif mode == "solo":
-            from solo_mode import start_solo
-            t = threading.Thread(target=start_solo, daemon=True)
-        elif mode == "duo":
-            from duo_mode import start_duo
-            t = threading.Thread(target=start_duo, daemon=True)
-        
-        t.start()
+        # ВАЖНО: pygame се стартира СИНХРОННО на главната нишка (не в threading.Thread),
+        # за да получи истински OS фокус върху клавиатурата/мишката.
+        self.hide()
+        QApplication.processEvents()
+
+        try:
+            if mode == "training":
+                from training_mode import start_training
+                start_training()
+            elif mode == "solo":
+                from solo_mode import start_solo
+                start_solo()
+            elif mode == "duo":
+                from duo_mode import start_duo
+                start_duo()
+        finally:
+            self.show()
 
     def go_back(self):
         from start_screen import StartScreen
